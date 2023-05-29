@@ -10,6 +10,28 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// middleware jwt
+const verifyJWTToken = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res
+      .status(401)
+      .send({ error: true, message: "unauthorized access" });
+  }
+  // bearer token
+  const token = authorization.split(" ")[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res
+        .status(401)
+        .send({ error: true, message: "unauthorized access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.idgt1xz.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -94,11 +116,19 @@ async function run() {
     // carts related apis
 
     //  get cart route
-    app.get("/carts", async (req, res) => {
+    app.get("/carts", verifyJWTToken, async (req, res) => {
       const email = req.query.email;
       if (!email) {
         res.send([]);
       }
+
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res
+          .status(403)
+          .send({ error: true, message: "Forbidden access" });
+      }
+
       const query = { email: email };
       const result = await cartCollection.find(query).toArray();
       res.send(result);
