@@ -53,6 +53,19 @@ async function run() {
       res.send(result);
     });
 
+    // admin user patch route
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
     // menu related apis
     // get menu
     app.get("/menu", async (req, res) => {
