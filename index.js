@@ -52,6 +52,7 @@ async function run() {
     const menuCollection = client.db("bistroBossDB").collection("menu");
     const reviewCollection = client.db("bistroBossDB").collection("reviews");
     const cartCollection = client.db("bistroBossDB").collection("carts");
+    const paymentCollection = client.db("bistroBossDB").collection("payments");
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
@@ -195,7 +196,7 @@ async function run() {
     });
 
     // create payment intent
-    app.post("//create-payment-intent", async (req, res) => {
+    app.post("/create-payment-intent", verifyJWTToken, async (req, res) => {
       const { price } = req.body;
       const amount = price * 100;
       const paymentIntent = await stripe.paymentIntents.create({
@@ -206,6 +207,13 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret
       })
+    })
+
+    // payment related api
+    app.post("/payment", async (req, res) => {
+      const payment = req.baseUrl;
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
     })
   } finally {
     // Ensures that the client will close when you finish/error
