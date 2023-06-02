@@ -210,10 +210,12 @@ async function run() {
     })
 
     // payment related api
-    app.post("/payment", async (req, res) => {
-      const payment = req.baseUrl;
+    app.post("/payment", verifyJWTToken, async (req, res) => {
+      const payment = req.body;
       const result = await paymentCollection.insertOne(payment);
-      res.send(result);
+      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } };
+      const deleteResult = await cartCollection.deleteMany(query);
+      res.send({ result, deleteResult });
     })
   } finally {
     // Ensures that the client will close when you finish/error
