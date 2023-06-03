@@ -198,7 +198,7 @@ async function run() {
     // create payment intent
     app.post("/create-payment-intent", verifyJWTToken, async (req, res) => {
       const { price } = req.body;
-      const amount = price * 100;
+      const amount = parseInt(price * 100);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: 'usd',
@@ -210,7 +210,7 @@ async function run() {
     })
 
     // payment related api
-    app.post("/payment", verifyJWTToken, async (req, res) => {
+    app.post("/payments", verifyJWTToken, async (req, res) => {
       const payment = req.body;
       const result = await paymentCollection.insertOne(payment);
       const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } };
@@ -235,38 +235,47 @@ async function run() {
     })
 
     // admin order state api
-    app.get("/order-stats", async (req, res) => {
+    app.get('/order-stats', async (req, res) => {
       const pipeline = [
         {
           $lookup: {
-            from: 'menu',
-            localField: 'menuItems',
-            foreignField: '_id',
-            as: 'menuItemsData'
-          }
+            from: "menu",
+            localField: "itemNames",
+            foreignField: "name",
+            as: "menuItemsData",
+          },
         },
         {
-          $unwind: '$menuItemsData'
+          $unwind: {
+            path: "$menuItemsData",
+          },
         },
         {
           $group: {
-            _id: '$menuItemsData.category',
-            count: { $sum: 1 },
-            total: { $sum: '$menuItemsData.price' }
-          }
+            _id: "$menuItemsData.category",
+            count: {
+              $sum: 1,
+            },
+            total: {
+              $sum: "$menuItemsData.price",
+            },
+          },
         },
         {
           $project: {
-            category: '$_id',
+            category: "$_id",
             count: 1,
-            total: { $round: ['$total', 2] },
-            _id: 0
-          }
-        }
-      ];
+            total: {
+              $round: ["$total", 2],
+            },
+            _id: 0,
+          },
+        },
+      ]
 
       const result = await paymentCollection.aggregate(pipeline).toArray()
       res.send(result)
+
     })
   } finally {
     // Ensures that the client will close when you finish/error
