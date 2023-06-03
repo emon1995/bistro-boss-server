@@ -219,19 +219,54 @@ async function run() {
     })
 
     // admin stats data get 
-    app.get("/admin-stats", async (req, res) => {
+    app.get("/admin-stats", verifyJWTToken, verifyAdmin, async (req, res) => {
       const users = await usersCollection.estimatedDocumentCount();
       const products = await menuCollection.estimatedDocumentCount();
-      const oders = await paymentCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
       const payments = await paymentCollection.find().toArray();
-      const reveune = payments.reduce((sum, payment) => sum + payment.price, 0);
+      const revenue = payments.reduce((sum, payment) => sum + payment.price, 0);
 
       res.send({
-        reveune,
+        revenue,
         users,
         products,
-        oders,
+        orders,
       })
+    })
+
+    // admin order state api
+    app.get("/order-stats", async (req, res) => {
+      const pipeline = [
+        {
+          $lookup: {
+            from: 'menu',
+            localField: 'menuItems',
+            foreignField: '_id',
+            as: 'menuItemsData'
+          }
+        },
+        {
+          $unwind: '$menuItemsData'
+        },
+        {
+          $group: {
+            _id: '$menuItemsData.category',
+            count: { $sum: 1 },
+            total: { $sum: '$menuItemsData.price' }
+          }
+        },
+        {
+          $project: {
+            category: '$_id',
+            count: 1,
+            total: { $round: ['$total', 2] },
+            _id: 0
+          }
+        }
+      ];
+
+      const result = await paymentCollection.aggregate(pipeline).toArray()
+      res.send(result)
     })
   } finally {
     // Ensures that the client will close when you finish/error
