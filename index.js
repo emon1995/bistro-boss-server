@@ -217,6 +217,22 @@ async function run() {
       const deleteResult = await cartCollection.deleteMany(query);
       res.send({ result, deleteResult });
     })
+
+    // admin stats data get 
+    app.get("/admin-stats", async (req, res) => {
+      const users = await usersCollection.estimatedDocumentCount();
+      const products = await menuCollection.estimatedDocumentCount();
+      const oders = await paymentCollection.estimatedDocumentCount();
+      const payments = await paymentCollection.find().toArray();
+      const reveune = payments.reduce((sum, payment) => sum + payment.price, 0);
+
+      res.send({
+        reveune,
+        users,
+        products,
+        oders,
+      })
+    })
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
