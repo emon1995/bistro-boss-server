@@ -235,7 +235,7 @@ async function run() {
     })
 
     // admin order state api
-    app.get('/order-stats', async (req, res) => {
+    app.get('/order-stats', verifyJWTToken, verifyAdmin, async (req, res) => {
       const pipeline = [
         {
           $lookup: {
